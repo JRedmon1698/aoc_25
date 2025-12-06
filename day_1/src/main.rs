@@ -1,28 +1,21 @@
 #[derive(Debug, Clone)]
 struct Turn {
     direction: char,
-    number: u8,
+    number: u128,
 }
 
 fn main() {
     let doc = String::from(
         "
-        L68
-        L30
-        R48
-        L5
-        R60
-        L55
-        L1
-        L99
-        R14
-        L82
+        R28
+        L500
     ",
     );
 
     let parsed_doc = build_turns(doc);
+    let number_of_zeroes = iterate_turns(parsed_doc);
 
-    // println!("{:?}", positions);
+    println!("{number_of_zeroes}");
 }
 
 fn build_turns(doc: String) -> Vec<Turn> {
@@ -33,36 +26,45 @@ fn build_turns(doc: String) -> Vec<Turn> {
     for turn_str in split_doc {
         let mut chars = turn_str.chars();
         let direction = chars.next().unwrap();
-        let number: u8 = chars.as_str().parse().unwrap();
+        let number: u128 = chars.as_str().parse().unwrap();
         result.push(Turn { direction, number });
     }
 
     result
 }
 
-fn iterate_turns(turns: Vec<Turn>) -> () {
+fn iterate_turns(turns: Vec<Turn>) -> u128 {
     let mut starting_pos = 50;
-    let mut positions = Vec::new();
+    let mut number_of_zeroes = 0;
+
+    if starting_pos == 0 {
+        number_of_zeroes += 1;
+    }
 
     for turn in turns {
-        record_positions(&mut starting_pos, turn, positions.clone());
+        starting_pos = record_position(starting_pos, turn);
+
+        if starting_pos == 0 {
+            number_of_zeroes += 1;
+        }
     }
+
+    number_of_zeroes
 }
 
-fn record_positions(starting_pos: &mut u8, turn: Turn, mut resting_positions: Vec<u8>) -> Vec<u8> {
-    let mut resting_position: u8 = starting_pos.clone();
+fn record_position(mut starting_pos: u128, turn: Turn) -> u128 {
+    const MAX_POSITION: u128 = 100;
 
     match turn.direction {
         'L' => {
-            if turn.number > *starting_pos {
-                let difference = turn.number - *starting_pos;
-                resting_position = 100 - difference;
-                resting_positions.push(resting_position);
-            }
+            let effective_turn = turn.number % MAX_POSITION;
+            starting_pos = (starting_pos + MAX_POSITION - effective_turn) % MAX_POSITION;
         }
-        'R' => resting_positions.push(*starting_pos + turn.number),
+        'R' => {
+            starting_pos = (starting_pos + turn.number) % MAX_POSITION;
+        }
         _ => (),
     }
 
-    resting_positions
+    starting_pos
 }
