@@ -30,6 +30,9 @@ fn main() {
 
     let m = Matrix::from_str(grid_raw);
     println!("{}", m);
+
+    let empty_neighbors = m.points_with_sparse_neighbors();
+    println!("number of rolls: {}", empty_neighbors.len());
 }
 
 impl Matrix<char> {
@@ -71,6 +74,30 @@ impl Matrix<char> {
         } else {
             None
         }
+    }
+
+    pub fn points_with_sparse_neighbors(&self) -> Vec<&PointCell<char>> {
+        let mut result = Vec::new();
+
+        for point in self.iter_points() {
+            // Skip empty cells entirely
+            if point.value == '.' {
+                continue;
+            }
+
+            let neighbors = self.check_neighbors(point);
+
+            let non_empty_count = neighbors
+                .iter()
+                .filter(|(_, _, is_empty)| !is_empty)
+                .count();
+
+            if non_empty_count < 4 {
+                result.push(point);
+            }
+        }
+
+        result
     }
 
     pub fn check_neighbors(&self, target_point: &PointCell<char>) -> Vec<(usize, usize, bool)> {
@@ -131,24 +158,3 @@ impl<T: fmt::Display> fmt::Display for Matrix<T> {
         writeln!(f, "]")
     }
 }
-
-// fn generate_matrix_from_string(raw: String) -> Vec<Vec<char>> {
-//     raw.split_whitespace()
-//         .map(|l| l.chars().collect())
-//         .collect::<Vec<Vec<char>>>()
-// }
-
-// fn print_matrix<T: std::fmt::Display>(v: &Vec<Vec<T>>) {
-//     println!("[");
-//     for row in v {
-//         print!("   [");
-//         for (i, item) in row.iter().enumerate() {
-//             if i > 0 {
-//                 print!(", ");
-//             }
-//             print!("{}", item);
-//         }
-//         println!("],");
-//     }
-//     println!("]");
-// }
