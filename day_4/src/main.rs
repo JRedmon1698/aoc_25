@@ -15,8 +15,7 @@ pub struct Matrix<T> {
 }
 
 fn main() {
-    let grid_raw = String::from(
-        "
+    let grid_raw = "
 ..@@.@@@@.
 @@@.@.@.@@
 @@@@@.@.@@
@@ -27,10 +26,10 @@ fn main() {
 @.@@@.@@@@
 .@@@@@@@@.
 @.@.@@@.@.
-",
-    );
+";
 
-    // let m = generate_matrix_from_string(grid_raw);
+    let m = Matrix::from_str(grid_raw);
+    println!("{}", m);
 }
 
 impl Matrix<char> {
@@ -60,6 +59,58 @@ impl Matrix<char> {
             cols: col_count,
             cells,
         }
+    }
+
+    pub fn iter_points(&self) -> impl Iterator<Item = &PointCell<char>> {
+        self.cells.iter()
+    }
+
+    pub fn get_point(&self, row: usize, col: usize) -> Option<&PointCell<char>> {
+        if row < self.rows && col < self.cols {
+            Some(&self.cells[row * self.cols + col])
+        } else {
+            None
+        }
+    }
+
+    pub fn check_neighbors(&self, target_point: &PointCell<char>) -> Vec<(usize, usize, bool)> {
+        // coordinates for all a point's possible neighbors
+        let deltas = [
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+            (0, -1),
+            (0, 1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
+        ];
+
+        let mut neighbors = Vec::new();
+
+        for (delta_row, delta_column) in deltas {
+            // get neighbor coordinates
+            let neighbor_row = target_point.row as isize + delta_row;
+            let neighbor_column = target_point.col as isize + delta_column;
+
+            // protect against out of bounds
+            if neighbor_row >= 0
+                && neighbor_row < self.rows as isize
+                && neighbor_column >= 0
+                && neighbor_column < self.cols as isize
+            {
+                let neighbor =
+                    &self.cells[(neighbor_row as usize) * self.cols + (neighbor_column as usize)];
+                let is_empty = neighbor.value == '.';
+                neighbors.push((neighbor.row, neighbor.col, is_empty));
+            }
+        }
+
+        neighbors
+    }
+
+    pub fn is_empty(&self, target_point: &PointCell<char>) -> bool {
+        target_point.value == '.'
     }
 }
 
