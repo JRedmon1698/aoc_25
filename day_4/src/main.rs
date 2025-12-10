@@ -16,23 +16,17 @@ pub struct Matrix<T> {
 
 fn main() {
     let grid_raw = "
-..@@.@@@@.
-@@@.@.@.@@
-@@@@@.@.@@
-@.@@@@..@.
-@@.@@@@.@@
-.@@@@@@@.@
-.@.@.@.@@@
-@.@@@.@@@@
-.@@@@@@@@.
-@.@.@@@.@.
+    
 ";
 
-    let m = Matrix::from_str(grid_raw);
-    println!("{}", m);
+    let mut m = Matrix::from_str(grid_raw);
+    // println!("{}", m);
 
-    let empty_neighbors = m.points_with_sparse_neighbors();
-    println!("number of rolls: {}", empty_neighbors.len());
+    // let empty_neighbors = m.points_with_sparse_neighbors();
+    // println!("number of rolls: {}", empty_neighbors.len());
+
+    let total_removed = m.remove_all_accessible();
+    println!("{}", total_removed);
 }
 
 impl Matrix<char> {
@@ -80,7 +74,6 @@ impl Matrix<char> {
         let mut result = Vec::new();
 
         for point in self.iter_points() {
-            // Skip empty cells entirely
             if point.value == '.' {
                 continue;
             }
@@ -134,6 +127,45 @@ impl Matrix<char> {
         }
 
         neighbors
+    }
+
+    pub fn remove_all_accessible(&mut self) -> usize {
+        let mut total_removed = 0;
+
+        loop {
+            let mut to_remove = Vec::new();
+
+            for point in self.iter_points() {
+                if point.value != '@' {
+                    continue;
+                }
+
+                let neighbors = self.check_neighbors(point);
+
+                let non_empty_count = neighbors
+                    .iter()
+                    .filter(|(_, _, is_empty)| !is_empty)
+                    .count();
+
+                if non_empty_count < 4 {
+                    to_remove.push((point.row, point.col));
+                }
+            }
+
+            if to_remove.is_empty() {
+                break;
+            }
+
+            total_removed += to_remove.len();
+
+            // remove them (turn '@' into 'x')
+            for (r, c) in to_remove {
+                let idx = r * self.cols + c;
+                self.cells[idx].value = '.';
+            }
+        }
+
+        total_removed
     }
 
     pub fn is_empty(&self, target_point: &PointCell<char>) -> bool {
