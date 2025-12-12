@@ -1,122 +1,118 @@
-use std::fmt;
+use std::iter;
 
-#[derive(Debug, Clone)]
-pub struct PointCell<T> {
-    pub row: usize,
-    pub col: usize,
-    pub value: T,
+#[derive(Debug)]
+struct ProblemBlock {
+    rows: Vec<String>,
+    operator: char,
 }
 
-#[derive(Debug, Clone)]
-pub struct Matrix<T> {
-    rows: usize,
-    cols: usize,
-    cells: Vec<PointCell<T>>,
+impl ProblemBlock {
+    fn solve(&self) -> u128 {
+        // 1. Determine Alignment based on Operator
+        // Rule derived from puzzle description:
+        // '+' = Left Align (pad right with spaces)
+        // '*' = Right Align (pad left with spaces)
+        let max_width = self.rows.iter().map(|s| s.len()).max().unwrap_or(0);
+
+        let aligned_rows: Vec<String> = self
+            .rows
+            .iter()
+            .map(|s| {
+                let padding = max_width - s.len();
+                match self.operator {
+                    '+' => format!("{}{}", s, " ".repeat(padding)), // Left Align
+                    '*' => format!("{}{}", " ".repeat(padding), s), // Right Align
+                    _ => s.to_string(),
+                }
+            })
+            .collect();
+
+        // 2. Parse columns vertically
+        let mut numbers = Vec::new();
+        for col in 0..max_width {
+            let mut num_str = String::new();
+            for row in &aligned_rows {
+                let ch = row.chars().nth(col).unwrap_or(' ');
+                if !ch.is_whitespace() {
+                    num_str.push(ch);
+                }
+            }
+            if let Ok(num) = num_str.parse::<u128>() {
+                numbers.push(num);
+            }
+        }
+
+        // 3. Calculate
+        match self.operator {
+            '+' => numbers.iter().sum(),
+            '*' => numbers.iter().product(),
+            _ => 0,
+        }
+    }
+}
+
+fn parse_input(input: &str) -> Vec<ProblemBlock> {
+    let lines: Vec<&str> = input.lines().filter(|l| !l.trim().is_empty()).collect();
+
+    if lines.is_empty() {
+        return vec![];
+    }
+
+    // Split each line into tokens (numbers/operators)
+    let grid: Vec<Vec<&str>> = lines
+        .iter()
+        .map(|line| line.split_whitespace().collect())
+        .collect();
+
+    let rows_count = grid.len();
+    let problems_count = grid[0].len(); // Assuming rectangular grid of tokens
+
+    let mut problems = Vec::new();
+
+    for p_idx in 0..problems_count {
+        let mut num_rows = Vec::new();
+        let mut operator = '+';
+
+        for r_idx in 0..rows_count {
+            let token = grid[r_idx].get(p_idx).unwrap_or(&"");
+            // If it's the last row, it's the operator
+            if r_idx == rows_count - 1 {
+                operator = token.chars().next().unwrap_or('+');
+            } else {
+                num_rows.push(token.to_string());
+            }
+        }
+        problems.push(ProblemBlock {
+            rows: num_rows,
+            operator,
+        });
+    }
+
+    problems
 }
 
 fn main() {
+    // We use the raw values. The logic handles the alignment,
+    // so we don't need to worry about the spacing in this string.
     let input = "
-123 328  51 64 
- 45 64  387 23 
-  6 98  215 314
-*   +   *   +   
-    ";
+    
+";
 
-    let g = Matrix::from_str(input);
+    let problems = parse_input(input);
+    let mut grand_total: u128 = 0;
 
-    println!("{}", create_expressions_from_matrix(g));
-}
-
-impl Matrix<String> {
-    fn from_str(s: &str) -> Self {
-        let mut cells = Vec::new();
-        let mut row_count = 0;
-        let mut col_count = 0;
-
-        for (row_idx, line) in s.lines().filter(|l| !l.trim().is_empty()).enumerate() {
-            let parts: Vec<String> = line.split_whitespace().map(|x| x.to_string()).collect();
-
-            if row_idx == 0 {
-                col_count = parts.len();
-            }
-
-            for (col_idx, value) in parts.into_iter().enumerate() {
-                cells.push(PointCell {
-                    row: row_idx,
-                    col: col_idx,
-                    value,
-                });
-            }
-
-            row_count += 1;
-        }
-
-        Self {
-            rows: row_count,
-            cols: col_count,
-            cells,
-        }
+    for (i, p) in problems.iter().enumerate() {
+        let answer = p.solve();
+        println!(
+            "Problem {}: {:?} using '{}' -> {}",
+            i + 1,
+            p.rows,
+            p.operator,
+            answer
+        );
+        grand_total += answer;
     }
 
-    pub fn iter_points(&self) -> impl Iterator<Item = &PointCell<String>> {
-        self.cells.iter()
-    }
-
-    pub fn get_point(&self, row: usize, col: usize) -> Option<&PointCell<String>> {
-        if row < self.rows && col < self.cols {
-            Some(&self.cells[row * self.cols + col])
-        } else {
-            None
-        }
-    }
-}
-
-impl<T: fmt::Display> fmt::Display for Matrix<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "[")?;
-        for row in 0..self.rows {
-            write!(f, "   [")?;
-            for col in 0..self.cols {
-                let cell = &self.cells[row * self.cols + col];
-                if col > 0 {
-                    write!(f, ", ")?;
-                }
-                write!(f, "{}", cell.value)?;
-            }
-            writeln!(f, "],")?;
-        }
-        writeln!(f, "]")
-    }
-}
-
-fn create_expressions_from_matrix(input: Matrix<String>) -> bool {
-    let mut total: u128 = 0;
-
-    for col in 0..input.cols {
-        let mut temp: Vec<String> = Vec::new();
-        let mut sub_total: u128 = 0;
-
-        for row in 0..input.rows {
-            temp.push(input.get_point(row, col).unwrap().value.clone());
-        }
-        match temp.last().unwrap().as_str() {
-            "+" => {
-                for i in 0..temp.len() - 1 {
-                    sub_total += temp[i].parse::<u128>().unwrap();
-                }
-            }
-            "*" => {
-                sub_total += 1;
-                for i in 0..temp.len() - 1 {
-                    sub_total *= temp[i].parse::<u128>().unwrap();
-                }
-            }
-            _ => (),
-        }
-        total += sub_total;
-    }
-
-    println!("{:?}", total);
-
-    false
+    println!("----------------");
+    println!("Grand Total: {}", grand_total);
 }
