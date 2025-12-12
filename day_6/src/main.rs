@@ -24,7 +24,7 @@ fn main() {
 
     let g = Matrix::from_str(input);
 
-    println!("{}", g);
+    println!("{}", create_expressions_from_matrix(g));
 }
 
 impl Matrix<String> {
@@ -58,17 +58,17 @@ impl Matrix<String> {
         }
     }
 
-    // pub fn iter_points(&self) -> impl Iterator<Item = &PointCell<char>> {
-    //     self.cells.iter()
-    // }
+    pub fn iter_points(&self) -> impl Iterator<Item = &PointCell<String>> {
+        self.cells.iter()
+    }
 
-    // pub fn get_point(&self, row: usize, col: usize) -> Option<&PointCell<char>> {
-    //     if row < self.rows && col < self.cols {
-    //         Some(&self.cells[row * self.cols + col])
-    //     } else {
-    //         None
-    //     }
-    // }
+    pub fn get_point(&self, row: usize, col: usize) -> Option<&PointCell<String>> {
+        if row < self.rows && col < self.cols {
+            Some(&self.cells[row * self.cols + col])
+        } else {
+            None
+        }
+    }
 }
 
 impl<T: fmt::Display> fmt::Display for Matrix<T> {
@@ -89,6 +89,34 @@ impl<T: fmt::Display> fmt::Display for Matrix<T> {
     }
 }
 
-// fn create_expressions_from_matrix(c: input) -> {
+fn create_expressions_from_matrix(input: Matrix<String>) -> bool {
+    let mut total: u128 = 0;
 
-// }
+    for col in 0..input.cols {
+        let mut temp: Vec<String> = Vec::new();
+        let mut sub_total: u128 = 0;
+
+        for row in 0..input.rows {
+            temp.push(input.get_point(row, col).unwrap().value.clone());
+        }
+        match temp.last().unwrap().as_str() {
+            "+" => {
+                for i in 0..temp.len() - 1 {
+                    sub_total += temp[i].parse::<u128>().unwrap();
+                }
+            }
+            "*" => {
+                sub_total += 1;
+                for i in 0..temp.len() - 1 {
+                    sub_total *= temp[i].parse::<u128>().unwrap();
+                }
+            }
+            _ => (),
+        }
+        total += sub_total;
+    }
+
+    println!("{:?}", total);
+
+    false
+}
