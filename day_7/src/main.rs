@@ -70,45 +70,45 @@ impl Matrix<char> {
 
     pub fn get_all_splitter_location_counts(&self) -> u128 {
         let splitter_char: char = '^';
-        let mut total_splitter_count: u128 = 0;
+        let mut total_split_count: u128 = 0;
         let mut splitter_char_indexes: Vec<Vec<u128>> = Vec::new();
 
         for (row_idx, row) in self.iter_rows().enumerate() {
-            // println!("row: {}", row_idx);
             let mut curr_row_splitter_indexes: Vec<u128> = Vec::new();
             for cell in row {
                 if cell.value == splitter_char {
-                    // println!("index of ^: {}", cell.col);
                     curr_row_splitter_indexes.push(cell.col as u128);
                 }
             }
+
             splitter_char_indexes.push(curr_row_splitter_indexes);
         }
 
-        // println!("all indexes of splitters: {:?}", splitter_char_indexes);
+        // a vector to track where splits SHOULD happen
+        // initialize to the index in the first row - index of 'S'
+        let mut line_to_be_split_at_indexes: &Vec<u128> = &self
+            .iter_row(0)
+            .find(|cell| cell.value == 'S')
+            .map(|cell| vec![cell.col as u128])
+            .expect("'S' not found in first row");
 
-        // skip the first row when starting to track indexes
-        let mut current_row_indexes: &Vec<u128> =
-            &splitter_char_indexes.clone().into_iter().nth(1).unwrap();
-        println!(
-            "indexes to check before loop starts: {:?}",
-            current_row_indexes
-        );
-        for row_indexes in &splitter_char_indexes {
-            // skip the first row
-            if row_indexes != splitter_char_indexes.iter().nth(0).unwrap() {
-                total_splitter_count += row_indexes
+        for row_splitter_indexes in &splitter_char_indexes {
+            // skip the first row [that contains the 'S']
+            if row_splitter_indexes != splitter_char_indexes.iter().nth(0).unwrap() {
+                total_split_count += row_splitter_indexes
                     .iter()
-                    .filter(|x| current_row_indexes.contains(x))
+                    .filter(|x| {
+                        line_to_be_split_at_indexes.contains(&(*x + 1))
+                            || line_to_be_split_at_indexes.contains(&(*x - 1))
+                    })
                     .count() as u128;
 
-                current_row_indexes = row_indexes;
-                println!("indexes in loop: {:?}", current_row_indexes);
+                line_to_be_split_at_indexes = row_splitter_indexes;
             }
-            // if row_indexes.iter().filter(|x| current_row_indexes.contains(x)).count() {}
+            // if row_splitter_indexes.iter().filter(|x| line_to_be_split_at_indexes.contains(x)).count() {}
         }
 
-        total_splitter_count
+        total_split_count
     }
 
     pub fn iter_row(&self, row: usize) -> impl Iterator<Item = &PointCell<char>> {
