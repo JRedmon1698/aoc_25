@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -17,12 +17,11 @@ pub struct Matrix<T> {
 
 fn main() {
     let grid_raw = "
-    
 ";
 
     let mut m = Matrix::from_str(grid_raw);
-    println!("{}", m);
-    println!("{}", m.get_all_splitter_location_counts());
+    // println!("{}", m);
+    println!("{}", m.count_timelines());
 }
 
 impl Matrix<char> {
@@ -54,56 +53,52 @@ impl Matrix<char> {
         }
     }
 
-    // pub fn get_all_splitter_location_counts(&self) -> u128 {
-    //     let splitter_char: char = '^';
-    //     let mut total_split_count: u128 = 0;
-    //     let mut splitter_char_indexes: Vec<Vec<u128>> = Vec::new();
+    //PART 2
+    pub fn count_timelines(&self) -> u128 {
+        // find the 'S'
+        let start_col = self
+            .iter_row(0)
+            .find(|c| c.value == 'S')
+            .expect("'S' not found")
+            .col as i32;
 
-    //     for (row_idx, row) in self.iter_rows().enumerate() {
-    //         let mut curr_row_splitter_indexes: Vec<u128> = Vec::new();
-    //         for cell in row {
-    //             if cell.value == splitter_char {
-    //                 curr_row_splitter_indexes.push(cell.col as u128);
-    //             }
-    //         }
+        // column -> number of timelines
+        let mut timelines: HashMap<i32, u128> = HashMap::new();
+        timelines.insert(start_col, 1);
 
-    //         splitter_char_indexes.push(curr_row_splitter_indexes);
-    //     }
+        for row in 1..self.rows {
+            let mut next: HashMap<i32, u128> = HashMap::new();
 
-    //     // a vector to track where splits SHOULD happen
-    //     // initialize to the index in the first row - index of 'S'
-    //     let mut line_to_be_split_at_indexes: &Vec<u128> = &self
-    //         .iter_row(0)
-    //         .find(|cell| cell.value == 'S')
-    //         .map(|cell| vec![cell.col as u128])
-    //         .expect("'S' not found in first row");
+            for (&col, &count) in timelines.iter() {
+                if col < 0 || col >= self.cols as i32 {
+                    continue;
+                }
 
-    //     for row_splitter_indexes in &splitter_char_indexes {
-    //         // skip the first row [that contains the 'S']
-    //         if row_splitter_indexes != splitter_char_indexes.iter().nth(0).unwrap() {
-    //             total_split_count += row_splitter_indexes
-    //                 .iter()
-    //                 .filter(|x| {
-    //                     line_to_be_split_at_indexes.contains(&(*x + 1))
-    //                         || line_to_be_split_at_indexes.contains(&(*x - 1))
-    //                 })
-    //                 .count() as u128;
+                let cell = self.get_point(row, col as usize).unwrap();
 
-    //             line_to_be_split_at_indexes = row_splitter_indexes;
-    //         }
-    //         println!(
-    //             "indexes where line will be split : {:?}",
-    //             line_to_be_split_at_indexes
-    //         );
-    //     }
+                if cell.value == '^' {
+                    *next.entry(col - 1).or_insert(0) += count;
+                    *next.entry(col + 1).or_insert(0) += count;
+                } else {
+                    *next.entry(col).or_insert(0) += count;
+                }
+            }
 
-    //     total_split_count
-    // }
+            timelines = next;
 
+            if timelines.is_empty() {
+                break;
+            }
+        }
+
+        timelines.values().sum()
+    }
+
+    // PART 1
     pub fn get_all_splitter_location_counts(&self) -> u128 {
         let mut total_splits: u128 = 0;
 
-        // find S
+        // find the 'S'
         let start_col = self
             .iter_row(0)
             .find(|c| c.value == 'S')
@@ -119,6 +114,7 @@ impl Matrix<char> {
             let mut next_beams: HashSet<i32> = HashSet::new();
 
             for &col in &active_beams {
+                // guard out of bounds
                 if col < 0 || col >= self.cols as i32 {
                     continue;
                 }
