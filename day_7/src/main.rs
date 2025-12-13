@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -16,22 +17,7 @@ pub struct Matrix<T> {
 
 fn main() {
     let grid_raw = "
-.......S.......
-...............
-.......^.......
-...............
-......^.^......
-...............
-.....^.^.^.....
-...............
-....^.^...^....
-...............
-...^.^...^.^...
-...............
-..^...^.....^..
-...............
-.^.^.^.^.^...^.
-...............
+    
 ";
 
     let mut m = Matrix::from_str(grid_raw);
@@ -68,47 +54,97 @@ impl Matrix<char> {
         }
     }
 
-    pub fn get_all_splitter_location_counts(&self) -> u128 {
-        let splitter_char: char = '^';
-        let mut total_split_count: u128 = 0;
-        let mut splitter_char_indexes: Vec<Vec<u128>> = Vec::new();
+    // pub fn get_all_splitter_location_counts(&self) -> u128 {
+    //     let splitter_char: char = '^';
+    //     let mut total_split_count: u128 = 0;
+    //     let mut splitter_char_indexes: Vec<Vec<u128>> = Vec::new();
 
-        for (row_idx, row) in self.iter_rows().enumerate() {
-            let mut curr_row_splitter_indexes: Vec<u128> = Vec::new();
-            for cell in row {
-                if cell.value == splitter_char {
-                    curr_row_splitter_indexes.push(cell.col as u128);
+    //     for (row_idx, row) in self.iter_rows().enumerate() {
+    //         let mut curr_row_splitter_indexes: Vec<u128> = Vec::new();
+    //         for cell in row {
+    //             if cell.value == splitter_char {
+    //                 curr_row_splitter_indexes.push(cell.col as u128);
+    //             }
+    //         }
+
+    //         splitter_char_indexes.push(curr_row_splitter_indexes);
+    //     }
+
+    //     // a vector to track where splits SHOULD happen
+    //     // initialize to the index in the first row - index of 'S'
+    //     let mut line_to_be_split_at_indexes: &Vec<u128> = &self
+    //         .iter_row(0)
+    //         .find(|cell| cell.value == 'S')
+    //         .map(|cell| vec![cell.col as u128])
+    //         .expect("'S' not found in first row");
+
+    //     for row_splitter_indexes in &splitter_char_indexes {
+    //         // skip the first row [that contains the 'S']
+    //         if row_splitter_indexes != splitter_char_indexes.iter().nth(0).unwrap() {
+    //             total_split_count += row_splitter_indexes
+    //                 .iter()
+    //                 .filter(|x| {
+    //                     line_to_be_split_at_indexes.contains(&(*x + 1))
+    //                         || line_to_be_split_at_indexes.contains(&(*x - 1))
+    //                 })
+    //                 .count() as u128;
+
+    //             line_to_be_split_at_indexes = row_splitter_indexes;
+    //         }
+    //         println!(
+    //             "indexes where line will be split : {:?}",
+    //             line_to_be_split_at_indexes
+    //         );
+    //     }
+
+    //     total_split_count
+    // }
+
+    pub fn get_all_splitter_location_counts(&self) -> u128 {
+        let mut total_splits: u128 = 0;
+
+        // find S
+        let start_col = self
+            .iter_row(0)
+            .find(|c| c.value == 'S')
+            .expect("'S' not found")
+            .col as i32;
+
+        // active beams represented by column indexes
+        let mut active_beams: HashSet<i32> = HashSet::new();
+        active_beams.insert(start_col);
+
+        // process row by row (starting below S)
+        for row in 1..self.rows {
+            let mut next_beams: HashSet<i32> = HashSet::new();
+
+            for &col in &active_beams {
+                if col < 0 || col >= self.cols as i32 {
+                    continue;
+                }
+
+                let cell = self.get_point(row, col as usize).unwrap();
+
+                if cell.value == '^' {
+                    // split occurs
+                    total_splits += 1;
+                    next_beams.insert(col - 1);
+                    next_beams.insert(col + 1);
+                } else {
+                    // beam continues straight down
+                    next_beams.insert(col);
                 }
             }
 
-            splitter_char_indexes.push(curr_row_splitter_indexes);
-        }
+            active_beams = next_beams;
 
-        // a vector to track where splits SHOULD happen
-        // initialize to the index in the first row - index of 'S'
-        let mut line_to_be_split_at_indexes: &Vec<u128> = &self
-            .iter_row(0)
-            .find(|cell| cell.value == 'S')
-            .map(|cell| vec![cell.col as u128])
-            .expect("'S' not found in first row");
-
-        for row_splitter_indexes in &splitter_char_indexes {
-            // skip the first row [that contains the 'S']
-            if row_splitter_indexes != splitter_char_indexes.iter().nth(0).unwrap() {
-                total_split_count += row_splitter_indexes
-                    .iter()
-                    .filter(|x| {
-                        line_to_be_split_at_indexes.contains(&(*x + 1))
-                            || line_to_be_split_at_indexes.contains(&(*x - 1))
-                    })
-                    .count() as u128;
-
-                line_to_be_split_at_indexes = row_splitter_indexes;
+            // no beams left → stop early
+            if active_beams.is_empty() {
+                break;
             }
-            // if row_splitter_indexes.iter().filter(|x| line_to_be_split_at_indexes.contains(x)).count() {}
         }
 
-        total_split_count
+        total_splits
     }
 
     pub fn iter_row(&self, row: usize) -> impl Iterator<Item = &PointCell<char>> {
